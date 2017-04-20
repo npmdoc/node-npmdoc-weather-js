@@ -1,0 +1,213 @@
+<div class="apidocDiv">
+<style>
+/*csslint
+*/
+.apidocDiv {
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.apidocDiv a[href] {
+    color: #33f;
+    font-weight: bold;
+    text-decoration: none;
+}
+.apidocDiv a[href]:hover {
+    text-decoration: underline;
+}
+.apidocCodeCommentSpan {
+    background: #bbf;
+    color: #000;
+    display: block;
+}
+.apidocCodeKeywordSpan {
+    color: #d00;
+    font-weight: bold;
+}
+.apidocCodePre {
+    background: #eef;
+    border: 1px solid;
+    color: #777;
+    padding: 5px;
+    white-space: pre-wrap;
+}
+.apidocFooterDiv {
+    margin-top: 20px;
+    text-align: center;
+}
+.apidocModuleLi {
+    margin-top: 10px;
+}
+.apidocSectionDiv {
+    border-top: 1px solid;
+    margin-top: 20px;
+}
+.apidocSignatureSpan {
+    color: #777;
+    font-weight: bold;
+}
+</style>
+<h1>api documentation for
+    <a
+
+        href="http://github.com/devfacet/weather"
+
+    >weather-js (v2.0.0)</a>
+</h1>
+<h4>A module for obtaining weather information</h4>
+<div class="apidocSectionDiv"><a
+    href="#apidoc.tableOfContents"
+    id="apidoc.tableOfContents"
+><h1>table of contents</h1></a><ol>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.weather-js">module weather-js</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.weather-js.find">
+            function <span class="apidocSignatureSpan">weather-js.</span>find
+            <span class="apidocSignatureSpan">(options, callback)</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+</ol></div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.weather-js" id="apidoc.module.weather-js">module weather-js</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.weather-js.find" id="apidoc.element.weather-js.find">
+        function <span class="apidocSignatureSpan">weather-js.</span>find
+        <span class="apidocSignatureSpan">(options, callback)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function find(options, callback) {
+
+  if(typeof callback !== &#x27;function&#x27;)
+    callback = function callback(err, result) { return err || result; };
+
+  if(!options || typeof options !== &#x27;object&#x27;)
+    return callback(&#x27;invalid options&#x27;);
+
+  if(!options.search)
+    return callback(&#x27;missing search input&#x27;);
+
+  var result     = [],
+      lang       = options.lang || defLang,
+      degreeType = options.degreeType || defDegreeType,
+      timeout    = options.timeout || defTimeout,
+      search     = qs.escape(&#x27;&#x27;+options.search),
+      reqUrl     = findUrl + &#x27;?src=outlook&#x26;weadegreetype=&#x27; + (&#x27;&#x27;+degreeType) + &#x27;&#x26;culture=&#x27; + (&#x27;&#x27;+lang) + &#x27;&#x26;weasearchstr=&#x27; + search
+;
+
+  request.get({url: reqUrl, timeout: timeout}, function(err, res, body) {
+
+    if(err)                    return callback(err);
+    if(res.statusCode !== 200) return callback(new Error(&#x27;request failed (&#x27; + res.statusCode + &#x27;)&#x27;));
+    if(!body)                  return callback(new Error(&#x27;failed to get body content&#x27;));
+
+    // Check body content
+    if(body.indexOf(&#x27;&#x3c;&#x27;) !== 0) {
+      if(body.search(/not found/i) !== -1) {
+        return callback(null, result);
+      }
+      return callback(new Error(&#x27;invalid body content&#x27;));
+    }
+
+    // Parse body
+    xmlParser.parseString(body, function(err, resultJSON) {
+      if(err) return callback(err);
+
+      if(!resultJSON || !resultJSON.weatherdata || !resultJSON.weatherdata.weather)
+        return callback(new Error(&#x27;failed to parse weather data&#x27;));
+
+      if(resultJSON.weatherdata.weather[&#x27;A$&#x27;] &#x26;&#x26; resultJSON.weatherdata.weather[&#x27;A$&#x27;].errormessage)
+        return callback(resultJSON.weatherdata.weather[&#x27;A$&#x27;].errormessage);
+
+      if(!(resultJSON.weatherdata.weather instanceof Array)) {
+        return callback(new Error(&#x27;missing weather info&#x27;));
+      }
+
+      // Iterate over weather data
+      var weatherLen = resultJSON.weatherdata.weather.length,
+          weatherItem;
+      for(var i = 0; i &#x3c; weatherLen; i++) {
+
+        if(typeof resultJSON.weatherdata.weather[i][&#x27;A$&#x27;] !== &#x27;object&#x27;)
+          continue;
+
+        // Init weather item
+        weatherItem = {
+          location: {
+            name: resultJSON.weatherdata.weather[i][&#x27;A$&#x27;][&#x27;weatherlocationname&#x27;],
+            zipcode: resultJSON.weatherdata.weather[i][&#x27;A$&#x27;][&#x27;zipcode&#x27;],
+            lat: resultJSON.weatherdata.weather[i][&#x27;A$&#x27;][&#x27;lat&#x27;],
+            long: resultJSON.weatherdata.weather[i][&#x27;A$&#x27;][&#x27;long&#x27;],
+            timezone: resultJSON.weatherdata.weather[i][&#x27;A$&#x27;][&#x27;timezone&#x27;],
+            alert: resultJSON.weatherdata.weather[i][&#x27;A$&#x27;][&#x27;alert&#x27;],
+            degreetype: resultJSON.weatherdata.weather[i][&#x27;A$&#x27;][&#x27;degreetype&#x27;],
+            imagerelativeurl: resultJSON.weatherdata.weather[i][&#x27;A$&#x27;][&#x27;imagerelativeurl&#x27;]
+            //url: resultJSON.weatherdata.weather[i][&#x27;A$&#x27;][&#x27;url&#x27;],
+            //code: resultJSON.weatherdata.weather[i][&#x27;A$&#x27;][&#x27;weatherlocationcode&#x27;],
+            //entityid: resultJSON.weatherdata.weather[i][&#x27;A$&#x27;][&#x27;entityid&#x27;],
+            //encodedlocationname: resultJSON.weatherdata.weather[i][&#x27;A$&#x27;][&#x27;encodedlocationname&#x27;]
+          },
+          current: null,
+          forecast: null
+        };
+
+        if(resultJSON.weatherdata.weather[i][&#x27;current&#x27;] instanceof Array &#x26;&#x26; resultJSON.weatherdata.weather[i][&#x27;current&#x27;].length &#x3e;
+0) {
+          if(typeof resultJSON.weatherdata.weather[i][&#x27;current&#x27;][0][&#x27;A$&#x27;] === &#x27;object&#x27;) {
+            weatherItem.current = resultJSON.weatherdata.weather[i][&#x27;current&#x27;][0][&#x27;A$&#x27;];
+
+            weatherItem.current.imageUrl = weatherItem.location.imagerelativeurl + &#x27;law/&#x27; + weatherItem.current.skycode + &#x27;.gif&#x27;;
+          }
+        }
+
+        if(resultJSON.weatherdata.weather[i][&#x27;forecast&#x27;] instanceof Array) {
+          weatherItem.forecast = [];
+          for(var k = 0; k &#x3c; resultJSON.weatherdata.weather[i][&#x27;forecast&#x27;].length; k++) {
+            if(typeof resultJSON.weatherdata.weather[i][&#x27;forecast&#x27;][k][&#x27;A$&#x27;] === &#x27;object&#x27;)
+              weatherItem.forecast.push(resultJSON.weatherdata.weather[i][&#x27;forecast&#x27;][k][&#x27;A$&#x27;]);
+          }
+        }
+
+        // Push weather item into result
+        result.push(weatherItem);
+      }
+
+      return callback( ...</pre></li>
+    <li>example usage<pre class="apidocCodePre">...
+```javascript
+var weather = require(&#x27;weather-js&#x27;);
+
+// Options:
+// search:     location name or zipcode
+// degreeType: F or C
+
+weather.<span class="apidocCodeKeywordSpan">find</span>({search: &#x27;San Francisco, CA&#x27;, degreeType: &#x27;F&#x27;}, function
+(err, result) {
+  if(err) console.log(err);
+
+  console.log(JSON.stringify(result, null, 2));
+});
+```
+```bash
+[
+...</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocFooterDiv">
+    [ this document was created with
+    <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a>
+    ]
+</div>
+</div>
